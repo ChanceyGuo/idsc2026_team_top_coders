@@ -23,37 +23,34 @@ def main():
 
     meta = pd.read_csv(metadata_csv)
 
-    # choose patient
-    pid = args.patient_id
-    if pid is None:
-        pid = str(meta.loc[0, "patient_id"])
+    if args.patient_id is None:
+        patient_id = str(meta.loc[0, "patient_id"])
     else:
-        pid = str(pid)
+        patient_id = str(args.patient_id)
 
     print("=" * 60)
     print("02_explore_data.py - Read one ECG record")
     print("=" * 60)
     print("ROOT:", root)
     print("FILES_DIR:", files_dir)
-    print("Chosen patient_id:", pid)
+    print("Chosen patient_id:", patient_id)
     print("-" * 60)
 
-    rec = wfdb.rdrecord(f"{files_dir}/{pid}/{pid}")
-    signals = rec.p_signal          # (samples, leads) -> expected (1200, 12)
-    leads = rec.sig_name
-    fs = rec.fs
+    record = wfdb.rdrecord(f"{files_dir}/{patient_id}/{patient_id}")
+    signals = record.p_signal
+    leads = record.sig_name
+    fs = record.fs
 
     print("fs:", fs)
     print("signals shape:", signals.shape)
     print("leads:", leads)
 
-    # plot lead 0 as a simple sanity figure
     plt.figure(figsize=(12, 4))
     plt.plot(signals[:, 0])
-    plt.title(f"Sample ECG - patient {pid} - lead {leads[0]}")
+    plt.title(f"Sample ECG - patient {patient_id} - lead {leads[0]}")
     plt.xlabel("Sample")
     plt.ylabel("Amplitude")
-    out_png = f"outputs/figures/sample_ecg_{pid}.png"
+    out_png = f"outputs/figures/sample_ecg_{patient_id}.png"
     plt.tight_layout()
     plt.savefig(out_png, dpi=150)
     plt.close()
