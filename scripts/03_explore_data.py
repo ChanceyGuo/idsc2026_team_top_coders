@@ -4,6 +4,7 @@ import pandas as pd
 import wfdb
 import matplotlib.pyplot as plt
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", required=True, help="Kaggle dataset root path")
@@ -18,6 +19,7 @@ def main():
 
     if not os.path.exists(metadata_csv):
         raise FileNotFoundError(f"metadata.csv not found: {metadata_csv}")
+
     if not os.path.exists(files_dir):
         raise FileNotFoundError(f"files_dir not found: {files_dir}")
 
@@ -29,14 +31,16 @@ def main():
         patient_id = str(args.patient_id)
 
     print("=" * 60)
-    print("02_explore_data.py - Read one ECG record")
+    print("03_explore_data.py - Read one ECG record")
     print("=" * 60)
     print("ROOT:", root)
     print("FILES_DIR:", files_dir)
     print("Chosen patient_id:", patient_id)
     print("-" * 60)
 
-    record = wfdb.rdrecord(f"{files_dir}/{patient_id}/{patient_id}")
+    record_path = f"{files_dir}/{patient_id}/{patient_id}"
+    record = wfdb.rdrecord(record_path)
+
     signals = record.p_signal
     leads = record.sig_name
     fs = record.fs
@@ -45,11 +49,15 @@ def main():
     print("signals shape:", signals.shape)
     print("leads:", leads)
 
+    first_lead = signals[:, 0]
+    first_lead_name = leads[0]
+
     plt.figure(figsize=(12, 4))
-    plt.plot(signals[:, 0])
-    plt.title(f"Sample ECG - patient {patient_id} - lead {leads[0]}")
+    plt.plot(first_lead)
+    plt.title(f"Sample ECG - patient {patient_id} - lead {first_lead_name}")
     plt.xlabel("Sample")
     plt.ylabel("Amplitude")
+
     out_png = f"outputs/figures/sample_ecg_{patient_id}.png"
     plt.tight_layout()
     plt.savefig(out_png, dpi=150)
@@ -58,6 +66,7 @@ def main():
     print("-" * 60)
     print("Saved:", out_png)
     print("OK: 03_explore_data completed.")
+
 
 if __name__ == "__main__":
     main()

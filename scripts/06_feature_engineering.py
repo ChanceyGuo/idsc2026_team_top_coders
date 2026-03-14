@@ -8,23 +8,28 @@ import numpy as np
 def zscore_per_lead(x: np.ndarray) -> np.ndarray:
     mean = x.mean(axis=1, keepdims=True)
     std = x.std(axis=1, keepdims=True)
-    return (x - mean) / (std + 1e-8)
+
+    x_normalized = (x - mean) / (std + 1e-8)
+    return x_normalized
 
 
 def clip_signal(x: np.ndarray, low: float = -5.0, high: float = 5.0) -> np.ndarray:
-    return np.clip(x, low, high)
+    x_clipped = np.clip(x, low, high)
+    return x_clipped
 
 
 def load_and_preprocess(patient_id: str, files_dir: str) -> np.ndarray:
-    record = wfdb.rdrecord(f"{files_dir}/{patient_id}/{patient_id}")
-    signals = record.p_signal  # expected: (1200, 12)
+    record_path = f"{files_dir}/{patient_id}/{patient_id}"
+    record = wfdb.rdrecord(record_path)
+    signals = record.p_signal
 
     if signals.shape != (1200, 12):
         raise ValueError(f"Unexpected shape for {patient_id}: {signals.shape}")
 
-    x = signals.T.astype(np.float32)   # (12, 1200)
+    x = signals.T.astype(np.float32)
     x = zscore_per_lead(x)
     x = clip_signal(x, -5.0, 5.0)
+
     return x
 
 
@@ -34,19 +39,27 @@ def extract_features(x: np.ndarray) -> np.ndarray:
     return: 48-dim feature vector
     """
     feats = []
+
     for i in range(x.shape[0]):
         lead = x[i]
-        feats.extend([
-            lead.mean(),
-            lead.std(),
-            lead.min(),
-            lead.max(),
-        ])
-    return np.array(feats, dtype=np.float32)
+
+        lead_mean = lead.mean()
+        lead_std = lead.std()
+        lead_min = lead.min()
+        lead_max = lead.max()
+
+        feats.append(lead_mean)
+        feats.append(lead_std)
+        feats.append(lead_min)
+        feats.append(lead_max)
+
+    feats = np.array(feats, dtype=np.float32)
+    return feats
 
 
 def build_feature_table(df: pd.DataFrame, files_dir: str) -> pd.DataFrame:
     rows = []
+
     for _, row in df.iterrows():
         patient_id = str(row["patient_id"])
         y = int(row["brugada"])
@@ -56,15 +69,17 @@ def build_feature_table(df: pd.DataFrame, files_dir: str) -> pd.DataFrame:
 
         row_dict = {
             "patient_id": patient_id,
-            "brugada": y
+            "brugada": y,
         }
 
         for j, val in enumerate(feats):
-            row_dict[f"f{j:02d}"] = float(val)
+            feature_name = f"f{j:02d}"
+            row_dict[feature_name] = float(val)
 
         rows.append(row_dict)
 
-    return pd.DataFrame(rows)
+    feature_table = pd.DataFrame(rows)
+    return feature_table
 
 
 def main():
@@ -107,10 +122,12 @@ def main():
     X_val.to_csv("outputs/results/features_val.csv", index=False)
     X_test.to_csv("outputs/results/features_test.csv", index=False)
 
+    feature_dim = X_train.shape[1] - 2
+
     print("Saved: outputs/results/features_train.csv")
     print("Saved: outputs/results/features_val.csv")
     print("Saved: outputs/results/features_test.csv")
-    print("Feature dimension:", X_train.shape[1] - 2)  # minus patient_id + label
+    print("Feature dimension:", feature_dim)
     print("OK: 06_feature_engineering completed.")
 
 

@@ -9,11 +9,14 @@ import matplotlib.pyplot as plt
 def zscore_per_lead(x: np.ndarray) -> np.ndarray:
     mean = x.mean(axis=1, keepdims=True)
     std = x.std(axis=1, keepdims=True)
-    return (x - mean) / (std + 1e-8)
+
+    x_normalized = (x - mean) / (std + 1e-8)
+    return x_normalized
 
 
 def clip_signal(x: np.ndarray, low: float = -5.0, high: float = 5.0) -> np.ndarray:
-    return np.clip(x, low, high)
+    x_clipped = np.clip(x, low, high)
+    return x_clipped
 
 
 def main():
@@ -31,6 +34,7 @@ def main():
 
     if not os.path.exists(metadata_csv):
         raise FileNotFoundError(f"metadata.csv not found: {metadata_csv}")
+
     if not os.path.exists(files_dir):
         raise FileNotFoundError(f"files_dir not found: {files_dir}")
 
@@ -47,16 +51,15 @@ def main():
     print("Chosen patient_id:", patient_id)
     print("-" * 60)
 
-    record = wfdb.rdrecord(f"{files_dir}/{patient_id}/{patient_id}")
-    signals = record.p_signal  # expected: (1200, 12)
+    record_path = f"{files_dir}/{patient_id}/{patient_id}"
+    record = wfdb.rdrecord(record_path)
+    signals = record.p_signal
 
     if signals.shape != (1200, 12):
         raise ValueError(f"Unexpected shape: {signals.shape}")
 
-    # transpose to (12, 1200)
     x = signals.T.astype(np.float32)
 
-    # simple preprocessing
     x_norm = zscore_per_lead(x)
     x_proc = clip_signal(x_norm, -5.0, 5.0)
 
@@ -66,10 +69,12 @@ def main():
     print("processed shape:", x_proc.shape)
     print("dtype:", x_proc.dtype)
 
-    # save a quick visualization of first 3 leads after preprocessing
     plt.figure(figsize=(12, 5))
     for i in range(3):
-        plt.plot(x_proc[i], label=f"Lead {i+1}", linewidth=1)
+        lead_signal = x_proc[i]
+        lead_name = f"Lead {i + 1}"
+        plt.plot(lead_signal, label=lead_name, linewidth=1)
+
     plt.title(f"Preprocessed ECG (first 3 leads) - patient {patient_id}")
     plt.xlabel("Time Step")
     plt.ylabel("Processed Signal")

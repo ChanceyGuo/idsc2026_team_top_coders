@@ -15,12 +15,14 @@ def main():
     os.makedirs("models", exist_ok=True)
     os.makedirs("outputs/results", exist_ok=True)
 
-    # load feature tables
     train_df = pd.read_csv("outputs/results/features_train.csv")
     val_df = pd.read_csv("outputs/results/features_val.csv")
     test_df = pd.read_csv("outputs/results/features_test.csv")
 
-    feature_cols = [c for c in train_df.columns if c.startswith("f")]
+    feature_cols = []
+    for c in train_df.columns:
+        if c.startswith("f"):
+            feature_cols.append(c)
 
     X_train = train_df[feature_cols]
     y_train = train_df["brugada"]
@@ -40,54 +42,61 @@ def main():
     print("Feature count:", len(feature_cols))
     print("-" * 60)
 
-    # 1) Logistic Regression (unweighted)
     lr_unweighted = LogisticRegression(
         random_state=args.seed,
-        max_iter=1000
+        max_iter=1000,
     )
     lr_unweighted.fit(X_train, y_train)
     joblib.dump(lr_unweighted, "models/lr_unweighted.pkl")
     print("Saved: models/lr_unweighted.pkl")
 
-    # 2) Logistic Regression (balanced)
     lr_balanced = LogisticRegression(
         random_state=args.seed,
         max_iter=1000,
-        class_weight="balanced"
+        class_weight="balanced",
     )
     lr_balanced.fit(X_train, y_train)
     joblib.dump(lr_balanced, "models/lr_balanced.pkl")
     print("Saved: models/lr_balanced.pkl")
 
-    # 3) Random Forest
     rf = RandomForestClassifier(
         n_estimators=200,
         random_state=args.seed,
-        class_weight="balanced"
+        class_weight="balanced",
     )
     rf.fit(X_train, y_train)
     joblib.dump(rf, "models/rf.pkl")
     print("Saved: models/rf.pkl")
 
-    # interpretability outputs
     rf_importance = pd.DataFrame({
         "feature": feature_cols,
-        "importance": rf.feature_importances_
-    }).sort_values("importance", ascending=False)
+        "importance": rf.feature_importances_,
+    })
+    rf_importance = rf_importance.sort_values("importance", ascending=False)
     rf_importance.to_csv("outputs/results/feature_importance_rf.csv", index=False)
     print("Saved: outputs/results/feature_importance_rf.csv")
 
     lr_unweighted_coef = pd.DataFrame({
         "feature": feature_cols,
-        "coefficient": lr_unweighted.coef_[0]
-    }).sort_values("coefficient", key=lambda s: s.abs(), ascending=False)
+        "coefficient": lr_unweighted.coef_[0],
+    })
+    lr_unweighted_coef = lr_unweighted_coef.sort_values(
+        "coefficient",
+        key=lambda s: s.abs(),
+        ascending=False,
+    )
     lr_unweighted_coef.to_csv("outputs/results/lr_coefficients_unweighted.csv", index=False)
     print("Saved: outputs/results/lr_coefficients_unweighted.csv")
 
     lr_balanced_coef = pd.DataFrame({
         "feature": feature_cols,
-        "coefficient": lr_balanced.coef_[0]
-    }).sort_values("coefficient", key=lambda s: s.abs(), ascending=False)
+        "coefficient": lr_balanced.coef_[0],
+    })
+    lr_balanced_coef = lr_balanced_coef.sort_values(
+        "coefficient",
+        key=lambda s: s.abs(),
+        ascending=False,
+    )
     lr_balanced_coef.to_csv("outputs/results/lr_coefficients_balanced.csv", index=False)
     print("Saved: outputs/results/lr_coefficients_balanced.csv")
 

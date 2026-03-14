@@ -18,13 +18,20 @@ from sklearn.metrics import (
 def compute_metrics(y_true, y_prob, threshold=0.5):
     y_pred = (y_prob >= threshold).astype(int)
 
+    accuracy = accuracy_score(y_true, y_pred)
+    precision = precision_score(y_true, y_pred, zero_division=0)
+    recall = recall_score(y_true, y_pred, zero_division=0)
+    f1 = f1_score(y_true, y_pred, zero_division=0)
+    roc_auc = roc_auc_score(y_true, y_prob)
+
     metrics = {
-        "accuracy": accuracy_score(y_true, y_pred),
-        "precision": precision_score(y_true, y_pred, zero_division=0),
-        "recall": recall_score(y_true, y_pred, zero_division=0),
-        "f1": f1_score(y_true, y_pred, zero_division=0),
-        "roc_auc": roc_auc_score(y_true, y_prob),
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "roc_auc": roc_auc,
     }
+
     return y_pred, metrics
 
 
@@ -40,7 +47,8 @@ def save_confusion_matrix(y_true, y_pred, title, out_path):
 
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
-            plt.text(j, i, str(cm[i, j]), ha="center", va="center")
+            current_value = str(cm[i, j])
+            plt.text(j, i, current_value, ha="center", va="center")
 
     plt.tight_layout()
     plt.savefig(out_path, dpi=150)
@@ -73,17 +81,22 @@ def evaluate_model(model_name, model, df, feature_cols, split_name, threshold=0.
     metrics_row = {
         "model": model_name,
         "split": split_name,
-        **metrics
+        "accuracy": metrics["accuracy"],
+        "precision": metrics["precision"],
+        "recall": metrics["recall"],
+        "f1": metrics["f1"],
+        "roc_auc": metrics["roc_auc"],
     }
 
     pred_df = pd.DataFrame({
         "patient_id": df["patient_id"],
         "true_label": y_true,
         "pred_label": y_pred,
-        "pred_prob": y_prob
+        "pred_prob": y_prob,
     })
 
-    misclassified_df = pred_df[pred_df["true_label"] != pred_df["pred_label"]].copy()
+    wrong_mask = pred_df["true_label"] != pred_df["pred_label"]
+    misclassified_df = pred_df[wrong_mask].copy()
 
     return metrics_row, pred_df, misclassified_df, y_true, y_pred, y_prob
 
@@ -101,7 +114,10 @@ def main():
     val_df = pd.read_csv("outputs/results/features_val.csv")
     test_df = pd.read_csv("outputs/results/features_test.csv")
 
-    feature_cols = [c for c in train_df.columns if c.startswith("f")]
+    feature_cols = []
+    for c in train_df.columns:
+        if c.startswith("f"):
+            feature_cols.append(c)
 
     models = {
         "lr_unweighted": joblib.load("models/lr_unweighted.pkl"),
@@ -121,68 +137,68 @@ def main():
     for model_name, model in models.items():
         print(f"Evaluating {model_name} ...")
 
-        # validation split
         metrics_val, pred_val, mis_val, y_val, ypred_val, yprob_val = evaluate_model(
-            model_name, model, val_df, feature_cols, "val", threshold=args.threshold
+            model_name,
+            model,
+            val_df,
+            feature_cols,
+            "val",
+            threshold=args.threshold,
         )
         summary_val.append(metrics_val)
 
-        pd.DataFrame([metrics_val]).to_csv(
-            f"outputs/results/metrics_{model_name}_val.csv", index=False
-        )
+        metrics_val_df = pd.DataFrame([metrics_val])
+        metrics_val_df.to_csv(f"outputs/results/metrics_{model_name}_val.csv", index=False)
 
         save_confusion_matrix(
             y_val,
             ypred_val,
             f"Confusion Matrix - {model_name} - Val",
-            f"outputs/figures/cm_{model_name}_val.png"
+            f"outputs/figures/cm_{model_name}_val.png",
         )
 
         save_roc_curve(
             y_val,
             yprob_val,
             f"ROC Curve - {model_name} - Val",
-            f"outputs/figures/roc_{model_name}_val.png"
+            f"outputs/figures/roc_{model_name}_val.png",
         )
 
-        # test split
         metrics_test, pred_test, mis_test, y_test, ypred_test, yprob_test = evaluate_model(
-            model_name, model, test_df, feature_cols, "test", threshold=args.threshold
+            model_name,
+            model,
+            test_df,
+            feature_cols,
+            "test",
+            threshold=args.threshold,
         )
         summary_test.append(metrics_test)
 
-        pd.DataFrame([metrics_test]).to_csv(
-            f"outputs/results/metrics_{model_name}_test.csv", index=False
-        )
+        metrics_test_df = pd.DataFrame([metrics_test])
+        metrics_test_df.to_csv(f"outputs/results/metrics_{model_name}_test.csv", index=False)
 
-        pred_test.to_csv(
-            f"outputs/results/predictions_{model_name}_test.csv", index=False
-        )
-
-        mis_test.to_csv(
-            f"outputs/results/misclassified_{model_name}_test.csv", index=False
-        )
+        pred_test.to_csv(f"outputs/results/predictions_{model_name}_test.csv", index=False)
+        mis_test.to_csv(f"outputs/results/misclassified_{model_name}_test.csv", index=False)
 
         save_confusion_matrix(
             y_test,
             ypred_test,
             f"Confusion Matrix - {model_name} - Test",
-            f"outputs/figures/cm_{model_name}_test.png"
+            f"outputs/figures/cm_{model_name}_test.png",
         )
 
         save_roc_curve(
             y_test,
             yprob_test,
             f"ROC Curve - {model_name} - Test",
-            f"outputs/figures/roc_{model_name}_test.png"
+            f"outputs/figures/roc_{model_name}_test.png",
         )
 
-    pd.DataFrame(summary_val).to_csv(
-        "outputs/results/experiment_summary_val.csv", index=False
-    )
-    pd.DataFrame(summary_test).to_csv(
-        "outputs/results/experiment_summary_test.csv", index=False
-    )
+    summary_val_df = pd.DataFrame(summary_val)
+    summary_test_df = pd.DataFrame(summary_test)
+
+    summary_val_df.to_csv("outputs/results/experiment_summary_val.csv", index=False)
+    summary_test_df.to_csv("outputs/results/experiment_summary_test.csv", index=False)
 
     print("-" * 60)
     print("Saved: outputs/results/experiment_summary_val.csv")

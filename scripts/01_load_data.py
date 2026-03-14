@@ -1,8 +1,9 @@
 import os
 import argparse
 import json
-import pandas as pd
 import glob
+import pandas as pd
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -11,14 +12,10 @@ def main():
 
     root = args.root.rstrip("/")
 
-    # expected paths
     metadata_csv = os.path.join(root, "metadata.csv")
     dict_csv = os.path.join(root, "metadata_dictionary.csv")
-
-    # your dataset has files/files/
     files_dir = os.path.join(root, "files", "files")
 
-    # outputs
     os.makedirs("outputs/results", exist_ok=True)
 
     print("=" * 60)
@@ -30,24 +27,25 @@ def main():
     print("FILES_DIR:", files_dir)
     print("-" * 60)
 
-    # existence checks
     if not os.path.exists(metadata_csv):
         raise FileNotFoundError(f"metadata.csv not found: {metadata_csv}")
+
     if not os.path.exists(files_dir):
         raise FileNotFoundError(f"files_dir not found (expected files/files): {files_dir}")
 
-    # count WFDB files
-    hea_count = len(glob.glob(files_dir + "/**/*.hea", recursive=True))
-    dat_count = len(glob.glob(files_dir + "/**/*.dat", recursive=True))
+    hea_files = glob.glob(os.path.join(files_dir, "**", "*.hea"), recursive=True)
+    dat_files = glob.glob(os.path.join(files_dir, "**", "*.dat"), recursive=True)
 
-    # read metadata
+    hea_count = len(hea_files)
+    dat_count = len(dat_files)
+
     meta = pd.read_csv(metadata_csv)
 
-    # label distribution (raw)
-    raw_unique = sorted(meta["brugada"].dropna().unique().tolist())
+    raw_unique = meta["brugada"].dropna().unique().tolist()
+    raw_unique = sorted(raw_unique)
+
     raw_counts = meta["brugada"].value_counts(dropna=False).to_dict()
 
-    # binary mapping (for reporting later)
     brugada_bin = (meta["brugada"].astype(int) > 0).astype(int)
     bin_counts = brugada_bin.value_counts().to_dict()
 
@@ -74,6 +72,7 @@ def main():
     print("-" * 60)
     print("Saved:", out_path)
     print("OK: 01_load_data completed.")
+
 
 if __name__ == "__main__":
     main()

@@ -4,6 +4,7 @@ import pandas as pd
 import wfdb
 import matplotlib.pyplot as plt
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", required=True, help="Kaggle dataset root path")
@@ -18,6 +19,7 @@ def main():
 
     if not os.path.exists(metadata_csv):
         raise FileNotFoundError(f"metadata.csv not found: {metadata_csv}")
+
     if not os.path.exists(files_dir):
         raise FileNotFoundError(f"files_dir not found: {files_dir}")
 
@@ -29,13 +31,15 @@ def main():
         patient_id = str(args.patient_id)
 
     print("=" * 60)
-    print("03_visualize_signals.py - Visualize 12-lead ECG")
+    print("04_visualize_signals.py - Visualize 12-lead ECG")
     print("=" * 60)
     print("Chosen patient_id:", patient_id)
     print("-" * 60)
 
-    record = wfdb.rdrecord(f"{files_dir}/{patient_id}/{patient_id}")
-    signals = record.p_signal   # (1200, 12)
+    record_path = f"{files_dir}/{patient_id}/{patient_id}"
+    record = wfdb.rdrecord(record_path)
+
+    signals = record.p_signal
     leads = record.sig_name
     fs = record.fs
 
@@ -45,8 +49,11 @@ def main():
     fig, axes = plt.subplots(12, 1, figsize=(14, 20), sharex=True)
 
     for i in range(12):
-        axes[i].plot(signals[:, i], linewidth=1)
-        axes[i].set_ylabel(leads[i], rotation=0, labelpad=25, fontsize=9)
+        one_lead_signal = signals[:, i]
+        one_lead_name = leads[i]
+
+        axes[i].plot(one_lead_signal, linewidth=1)
+        axes[i].set_ylabel(one_lead_name, rotation=0, labelpad=25, fontsize=9)
         axes[i].grid(True, alpha=0.3)
 
     axes[-1].set_xlabel("Sample")
@@ -58,7 +65,8 @@ def main():
     plt.close()
 
     print("Saved:", out_png)
-    print("OK: 03_visualize_signals completed.")
+    print("OK: 04_visualize_signals completed.")
+
 
 if __name__ == "__main__":
     main()
