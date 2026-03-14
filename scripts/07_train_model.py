@@ -6,6 +6,7 @@ import joblib
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
@@ -68,8 +69,31 @@ def main():
     joblib.dump(rf, "models/rf.pkl")
     print("Saved: models/rf.pkl")
 
+    # interpretability outputs
+    rf_importance = pd.DataFrame({
+        "feature": feature_cols,
+        "importance": rf.feature_importances_
+    }).sort_values("importance", ascending=False)
+    rf_importance.to_csv("outputs/results/feature_importance_rf.csv", index=False)
+    print("Saved: outputs/results/feature_importance_rf.csv")
+
+    lr_unweighted_coef = pd.DataFrame({
+        "feature": feature_cols,
+        "coefficient": lr_unweighted.coef_[0]
+    }).sort_values("coefficient", key=lambda s: s.abs(), ascending=False)
+    lr_unweighted_coef.to_csv("outputs/results/lr_coefficients_unweighted.csv", index=False)
+    print("Saved: outputs/results/lr_coefficients_unweighted.csv")
+
+    lr_balanced_coef = pd.DataFrame({
+        "feature": feature_cols,
+        "coefficient": lr_balanced.coef_[0]
+    }).sort_values("coefficient", key=lambda s: s.abs(), ascending=False)
+    lr_balanced_coef.to_csv("outputs/results/lr_coefficients_balanced.csv", index=False)
+    print("Saved: outputs/results/lr_coefficients_balanced.csv")
+
     print("-" * 60)
     print("OK: 07_train_model completed.")
+
 
 if __name__ == "__main__":
     main()

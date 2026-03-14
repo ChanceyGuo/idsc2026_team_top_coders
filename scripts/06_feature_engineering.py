@@ -4,21 +4,29 @@ import pandas as pd
 import wfdb
 import numpy as np
 
+
 def zscore_per_lead(x: np.ndarray) -> np.ndarray:
     mean = x.mean(axis=1, keepdims=True)
     std = x.std(axis=1, keepdims=True)
     return (x - mean) / (std + 1e-8)
 
+
+def clip_signal(x: np.ndarray, low: float = -5.0, high: float = 5.0) -> np.ndarray:
+    return np.clip(x, low, high)
+
+
 def load_and_preprocess(patient_id: str, files_dir: str) -> np.ndarray:
     record = wfdb.rdrecord(f"{files_dir}/{patient_id}/{patient_id}")
-    signals = record.p_signal  # (1200, 12)
+    signals = record.p_signal  # expected: (1200, 12)
 
     if signals.shape != (1200, 12):
         raise ValueError(f"Unexpected shape for {patient_id}: {signals.shape}")
 
     x = signals.T.astype(np.float32)   # (12, 1200)
     x = zscore_per_lead(x)
+    x = clip_signal(x, -5.0, 5.0)
     return x
+
 
 def extract_features(x: np.ndarray) -> np.ndarray:
     """
@@ -32,9 +40,10 @@ def extract_features(x: np.ndarray) -> np.ndarray:
             lead.mean(),
             lead.std(),
             lead.min(),
-            lead.max()
+            lead.max(),
         ])
     return np.array(feats, dtype=np.float32)
+
 
 def build_feature_table(df: pd.DataFrame, files_dir: str) -> pd.DataFrame:
     rows = []
@@ -56,6 +65,7 @@ def build_feature_table(df: pd.DataFrame, files_dir: str) -> pd.DataFrame:
         rows.append(row_dict)
 
     return pd.DataFrame(rows)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -82,7 +92,7 @@ def main():
     test_df = test_ids.merge(summary, on="patient_id", how="left")
 
     print("=" * 60)
-    print("05_feature_engineering.py - Build feature tables")
+    print("06_feature_engineering.py - Build feature tables")
     print("=" * 60)
     print("Train rows:", len(train_df))
     print("Val rows:", len(val_df))
@@ -101,7 +111,8 @@ def main():
     print("Saved: outputs/results/features_val.csv")
     print("Saved: outputs/results/features_test.csv")
     print("Feature dimension:", X_train.shape[1] - 2)  # minus patient_id + label
-    print("OK: 05_feature_engineering completed.")
+    print("OK: 06_feature_engineering completed.")
+
 
 if __name__ == "__main__":
     main()
