@@ -14,6 +14,7 @@ from sklearn.metrics import (
     roc_curve,
 )
 
+
 def compute_metrics(y_true, y_prob, threshold=0.5):
     y_pred = (y_prob >= threshold).astype(int)
 
@@ -25,6 +26,7 @@ def compute_metrics(y_true, y_prob, threshold=0.5):
         "roc_auc": roc_auc_score(y_true, y_prob),
     }
     return y_pred, metrics
+
 
 def save_confusion_matrix(y_true, y_pred, title, out_path):
     cm = confusion_matrix(y_true, y_pred)
@@ -44,6 +46,7 @@ def save_confusion_matrix(y_true, y_pred, title, out_path):
     plt.savefig(out_path, dpi=150)
     plt.close()
 
+
 def save_roc_curve(y_true, y_prob, title, out_path):
     fpr, tpr, _ = roc_curve(y_true, y_prob)
     auc = roc_auc_score(y_true, y_prob)
@@ -59,12 +62,13 @@ def save_roc_curve(y_true, y_prob, title, out_path):
     plt.savefig(out_path, dpi=150)
     plt.close()
 
-def evaluate_model(model_name, model, df, feature_cols, split_name):
+
+def evaluate_model(model_name, model, df, feature_cols, split_name, threshold=0.5):
     X = df[feature_cols]
     y_true = df["brugada"]
 
     y_prob = model.predict_proba(X)[:, 1]
-    y_pred, metrics = compute_metrics(y_true, y_prob, threshold=0.5)
+    y_pred, metrics = compute_metrics(y_true, y_prob, threshold=threshold)
 
     metrics_row = {
         "model": model_name,
@@ -83,9 +87,11 @@ def evaluate_model(model_name, model, df, feature_cols, split_name):
 
     return metrics_row, pred_df, misclassified_df, y_true, y_pred, y_prob
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--threshold", type=float, default=0.5, help="Decision threshold")
     args = parser.parse_args()
 
     os.makedirs("outputs/results", exist_ok=True)
@@ -109,63 +115,80 @@ def main():
     print("=" * 60)
     print("08_evaluate_model.py - Evaluate baseline models")
     print("=" * 60)
+    print("Threshold:", args.threshold)
+    print("-" * 60)
 
     for model_name, model in models.items():
         print(f"Evaluating {model_name} ...")
 
-        # val
+        # validation split
         metrics_val, pred_val, mis_val, y_val, ypred_val, yprob_val = evaluate_model(
-            model_name, model, val_df, feature_cols, "val"
+            model_name, model, val_df, feature_cols, "val", threshold=args.threshold
         )
         summary_val.append(metrics_val)
 
         pd.DataFrame([metrics_val]).to_csv(
             f"outputs/results/metrics_{model_name}_val.csv", index=False
         )
+
         save_confusion_matrix(
-            y_val, ypred_val,
+            y_val,
+            ypred_val,
             f"Confusion Matrix - {model_name} - Val",
             f"outputs/figures/cm_{model_name}_val.png"
         )
+
         save_roc_curve(
-            y_val, yprob_val,
+            y_val,
+            yprob_val,
             f"ROC Curve - {model_name} - Val",
             f"outputs/figures/roc_{model_name}_val.png"
         )
 
-        # test
+        # test split
         metrics_test, pred_test, mis_test, y_test, ypred_test, yprob_test = evaluate_model(
-            model_name, model, test_df, feature_cols, "test"
+            model_name, model, test_df, feature_cols, "test", threshold=args.threshold
         )
         summary_test.append(metrics_test)
 
         pd.DataFrame([metrics_test]).to_csv(
             f"outputs/results/metrics_{model_name}_test.csv", index=False
         )
+
         pred_test.to_csv(
             f"outputs/results/predictions_{model_name}_test.csv", index=False
         )
+
         mis_test.to_csv(
             f"outputs/results/misclassified_{model_name}_test.csv", index=False
         )
+
         save_confusion_matrix(
-            y_test, ypred_test,
+            y_test,
+            ypred_test,
             f"Confusion Matrix - {model_name} - Test",
             f"outputs/figures/cm_{model_name}_test.png"
         )
+
         save_roc_curve(
-            y_test, yprob_test,
+            y_test,
+            yprob_test,
             f"ROC Curve - {model_name} - Test",
             f"outputs/figures/roc_{model_name}_test.png"
         )
 
-    pd.DataFrame(summary_val).to_csv("outputs/results/experiment_summary_val.csv", index=False)
-    pd.DataFrame(summary_test).to_csv("outputs/results/experiment_summary_test.csv", index=False)
+    pd.DataFrame(summary_val).to_csv(
+        "outputs/results/experiment_summary_val.csv", index=False
+    )
+    pd.DataFrame(summary_test).to_csv(
+        "outputs/results/experiment_summary_test.csv", index=False
+    )
 
     print("-" * 60)
     print("Saved: outputs/results/experiment_summary_val.csv")
     print("Saved: outputs/results/experiment_summary_test.csv")
     print("OK: 08_evaluate_model completed.")
+
 
 if __name__ == "__main__":
     main()
