@@ -1,0 +1,19 @@
+{
+  "n_rows": 363,
+  "hea_count": 363,
+  "dat_count": 363,
+  "raw_brugada_unique": [
+    0,
+    1,
+    2
+  ],
+  "raw_brugada_counts": {
+    "0": 287,
+    "1": 69,
+    "2": 7
+  },
+  "binary_counts_(brugada>0)": {
+    "0": 287,
+    "1": 76
+  }
+}

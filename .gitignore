@@ -1,14 +1,16 @@
-# raw biomedical data should NOT be committed
-data/
-*.dat
+__pycache__/
+*.py[cod]
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+.ipynb_checkpoints/
+
 *.hea
+*.dat
 *.edf
 *.zip
 *.tar
 *.tar.gz
-
-# local outputs
-outputs/
-__pycache__/
-.ipynb_checkpoints/
-.DS_Store
+*.7z
