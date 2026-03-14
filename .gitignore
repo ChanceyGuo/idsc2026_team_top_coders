@@ -1,0 +1,14 @@
+# raw biomedical data should NOT be committed
+data/
+*.dat
+*.hea
+*.edf
+*.zip
+*.tar
+*.tar.gz
+
+# local outputs
+outputs/
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
