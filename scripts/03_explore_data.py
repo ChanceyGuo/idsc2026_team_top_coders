@@ -57,7 +57,7 @@ def main():
 
     print("-" * 60)
     print("Saved:", out_png)
-    print("OK: 02_explore_data completed.")
+    print("OK: 03_explore_data completed.")
 
 if __name__ == "__main__":
     main()
