@@ -1,0 +1,2 @@
+model,split,accuracy,precision,recall,f1,roc_auc
+lr_unweighted,test,0.8,0.6,0.25,0.35294117647058826,0.6298449612403101
